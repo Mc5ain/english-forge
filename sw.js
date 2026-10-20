@@ -1,4 +1,4 @@
-const CACHE = 'english-forge-v8';
+const CACHE = 'english-forge-v9';
 const ASSETS = [
   './',
   './index.html',
