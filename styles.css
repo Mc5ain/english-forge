@@ -1595,6 +1595,57 @@ html[data-theme="light"] .hero-ring::before {
   line-height: 1.6;
 }
 
+.definition-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  width: min(100%, 720px);
+  margin-top: 22px;
+  text-align: left;
+}
+
+.definition-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.definition-pos {
+  padding-top: 2px;
+  color: var(--orange);
+  font-family: Georgia, serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.definition-text {
+  color: var(--text);
+  font-size: clamp(16px, 2vw, 21px);
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+
+.definition-prompt {
+  width: min(100%, 680px);
+  margin: 20px auto 12px;
+}
+
+.definition-prompt .definition-row {
+  padding: 13px 16px;
+  background: rgba(200, 255, 114, 0.045);
+}
+
+.definition-prompt .definition-text {
+  font-size: clamp(18px, 2.5vw, 26px);
+}
+
 .word-pos {
   position: relative;
   z-index: 1;
@@ -3040,6 +3091,26 @@ html[data-theme="light"] .hero-ring::before {
 
   .word-card-word.meaning {
     font-size: 29px;
+  }
+
+  .definition-list {
+    gap: 6px;
+    margin-top: 18px;
+  }
+
+  .definition-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .definition-text {
+    font-size: 17px;
+    line-height: 1.58;
+  }
+
+  .definition-prompt {
+    margin-top: 16px;
   }
 
   .typed-actions {

@@ -54,6 +54,7 @@ function cleanMeaning(meaning) {
   return normalizeSpace(meaning)
     .replace(/^[\s,;:]+/, '')
     .replace(/,n\. \([^)]*\)人名[^,]*/g, '')
+    .replace(/(?:,|；)\[互联网\][^,]*/g, '')
     .replace(/\s+,/g, ',');
 }
 
@@ -65,6 +66,19 @@ function shortMeaning(meaning) {
   const boundary = Math.max(clipped.lastIndexOf('；'), clipped.lastIndexOf(','));
   summary = boundary >= 42 ? clipped.slice(0, boundary) : clipped;
   return summary.replace(/[，,；;]\s*$/, '');
+}
+
+function parseSenses(meaning) {
+  const marker = '(?:modal|prep|pron|conj|abbr|adj|adv|aux|det|art|num|int|vt|vi|n|v)';
+  return meaning
+    .split(new RegExp(`,(?=${marker}\\.)`))
+    .map(chunk => {
+      const match = chunk.trim().match(new RegExp(`^(${marker})\\.\\s*(.+)$`));
+      return match
+        ? { pos: `${match[1]}.`, text: match[2].trim() }
+        : { pos: '', text: chunk.trim() };
+    })
+    .filter(sense => sense.text);
 }
 
 function bandForRank(rank) {
@@ -127,12 +141,14 @@ const words = records
   .filter(record => record.rank <= BASE_WORD_LIMIT || examTags.has(record.word))
   .map((record, index) => {
     const band = bandForRank(record.rank);
+    const short = shortMeaning(record.meaning);
+    const shortSenses = parseSenses(short).slice(0, 2);
     return {
       id: `w${String(index + 1).padStart(4, '0')}`,
       word: record.word,
       phonetic: record.phonetic.replace(/^\/|\/$/g, ''),
       meaning: record.meaning,
-      shortMeaning: shortMeaning(record.meaning),
+      shortSenses,
       pos: extractPos(record.meaning),
       rank: record.rank,
       band: band.key,

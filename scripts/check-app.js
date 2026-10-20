@@ -74,7 +74,12 @@ const firstWordRank = Number(
   (document.querySelector('.word-pos').textContent.match(/#(\d+)/) || [])[1]
 );
 check(firstWordRank >= 800, '默认新词应从日常核心及以上开始，而不是 on、by 等基础功能词');
-check(document.querySelector('.word-meaning-reveal').textContent.length <= 140, '单词卡释义摘要不应过长');
+const definitionRows = document.querySelectorAll('.definition-row');
+check(definitionRows.length >= 1, '单词卡释义应按词性拆行');
+check(
+  Array.from(definitionRows).every(row => row.textContent.trim().length <= 100),
+  '单词卡单条释义不应过长'
+);
 keydown(window, '3');
 check(app().includes('2 / 20'), '评分后应进入下一个词');
 const savedState = JSON.parse(window.localStorage.getItem('english_forge_state_v1'));

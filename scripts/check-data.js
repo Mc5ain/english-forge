@@ -23,8 +23,12 @@ function check(condition, message) {
 check(words.length >= 10000, `词库应包含基础高频词和考试词，当前仅 ${words.length} 条`);
 check(new Set(words.map(word => word.id)).size === words.length, '存在重复词条 ID');
 for (const word of words) {
-  check(Boolean(word.word && word.meaning && word.shortMeaning && word.pos), `词条字段缺失：${word.id}`);
-  check(word.shortMeaning.length <= word.meaning.length, `词条摘要异常：${word.id}`);
+  check(Boolean(word.word && word.meaning && word.pos), `词条字段缺失：${word.id}`);
+  check(Array.isArray(word.shortSenses) && word.shortSenses.length > 0, `结构化释义缺失：${word.id}`);
+  check(
+    word.shortSenses.reduce((sum, sense) => sum + sense.text.length, 0) <= word.meaning.length,
+    `词条摘要异常：${word.id}`
+  );
   check(!seen.has(word.word), `存在重复单词：${word.word}`);
   seen.add(word.word);
   check(Number.isInteger(word.rank) && word.rank > 0, `词频序号异常：${word.word}`);
