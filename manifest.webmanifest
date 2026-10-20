@@ -1,0 +1,18 @@
+{
+  "name": "English Forge · 英语锻造所",
+  "short_name": "English Forge",
+  "description": "离线优先的英语词汇、听力、口语、阅读与语法训练站",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#09110f",
+  "theme_color": "#09110f",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

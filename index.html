@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09110f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="English Forge">
+  <title>English Forge · 英语锻造所</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <script>
+    try {
+      if (localStorage.getItem('english_forge_theme') === 'light') {
+        document.documentElement.dataset.theme = 'light';
+      }
+    } catch {}
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <noscript>
+    <div style="padding:24px;color:#f2f5e9;background:#09110f;font-family:sans-serif">
+      English Forge 需要启用 JavaScript 才能进行训练。
+    </div>
+  </noscript>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#home" data-nav="home" aria-label="English Forge 首页">
+        <span class="brand-mark">EF</span>
+        <span class="brand-copy">
+          <strong>ENGLISH</strong>
+          <small>FORGE / 英语锻造所</small>
+        </span>
+      </a>
+
+      <nav class="side-nav" aria-label="主导航">
+        <button class="nav-item active" data-nav="home"><span class="nav-icon">◉</span><span>今日</span><small>MISSION</small></button>
+        <button class="nav-item" data-nav="vocab"><span class="nav-icon">Aa</span><span>词汇</span><small id="nav-vocab-count">词库</small></button>
+        <button class="nav-item" data-nav="review"><span class="nav-icon">↺</span><span>复习</span><small id="nav-due-count">0 due</small></button>
+        <button class="nav-item" data-nav="listening"><span class="nav-icon">)))</span><span>听力</span><small>SHADOW</small></button>
+        <button class="nav-item" data-nav="speaking"><span class="nav-icon">◌</span><span>口语</span><small>SPEAK</small></button>
+        <button class="nav-item" data-nav="reading"><span class="nav-icon">¶</span><span>阅读</span><small>READ</small></button>
+        <button class="nav-item" data-nav="grammar"><span class="nav-icon">{ }</span><span>语法</span><small>LAB</small></button>
+        <button class="nav-item" data-nav="dictionary"><span class="nav-icon">⌕</span><span>词典</span><small>SEARCH</small></button>
+      </nav>
+
+      <div class="side-footer">
+        <button class="streak-card" data-nav="progress">
+          <span class="streak-flame">✦</span>
+          <span><strong id="sidebar-streak">0</strong><small>DAY STREAK</small></span>
+          <span class="streak-arrow">↗</span>
+        </button>
+        <button class="settings-link" data-open-settings>⚙ 设置与数据</button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <a class="mobile-brand" href="#home" data-nav="home">EF</a>
+        <div class="topbar-copy">
+          <span id="view-kicker">TODAY'S MISSION</span>
+          <strong id="view-title">把英语练成能力</strong>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button mobile-only" data-open-settings aria-label="设置">⚙</button>
+          <span class="live-pill"><i></i> LOCAL-FIRST</span>
+        </div>
+      </header>
+      <main id="app" class="app-main" aria-live="polite"></main>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" aria-label="移动端主导航">
+    <button class="bottom-item active" data-nav="home"><span>◉</span><small>今日</small></button>
+    <button class="bottom-item" data-nav="vocab"><span>Aa</span><small>词汇</small></button>
+    <button class="bottom-item" data-nav="listening"><span>)))</span><small>听力</small></button>
+    <button class="bottom-item" data-nav="speaking"><span>◌</span><small>口语</small></button>
+    <button class="bottom-item" data-nav="more"><span>＋</span><small>更多</small></button>
+  </nav>
+
+  <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-head">
+      <div>
+        <span class="eyebrow">SYSTEM</span>
+        <h2 id="settings-title">设置与学习数据</h2>
+      </div>
+      <button class="icon-button" data-close-settings aria-label="关闭">×</button>
+    </div>
+    <section class="settings-section">
+      <h3>学习节奏</h3>
+      <div class="setting-row">
+        <span>每日训练动作</span>
+        <div class="segmented" id="goal-setting">
+          <button data-daily-goal="10">10</button>
+          <button data-daily-goal="20">20</button>
+          <button data-daily-goal="30">30</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>计入范围</span>
+        <span class="setting-note" id="goal-explainer">20 个记词、听说读动作计入</span>
+      </div>
+      <div class="setting-row">
+        <span>词库阶段</span>
+        <select id="level-setting" class="select-control">
+          <option value="foundation">基础高频 1–800</option>
+          <option value="everyday">日常核心 801–2000</option>
+          <option value="campus">校园进阶 2001–3500</option>
+          <option value="academic">学术拓展 3501–5000</option>
+          <option value="advanced">高阶表达 5001+</option>
+          <option value="all">全部词库</option>
+        </select>
+      </div>
+    </section>
+    <section class="settings-section">
+      <h3>外观</h3>
+      <div class="setting-row">
+        <span>界面主题</span>
+        <div class="segmented" id="theme-setting">
+          <button data-theme-option="dark">深色</button>
+          <button data-theme-option="light">浅色</button>
+        </div>
+      </div>
+    </section>
+    <section class="settings-section">
+      <h3>发音</h3>
+      <div class="setting-row">
+        <span>朗读口音</span>
+        <div class="segmented" id="accent-setting">
+          <button data-accent="en-US">美音</button>
+          <button data-accent="en-GB">英音</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>朗读速度</span>
+        <div class="segmented" id="rate-setting">
+          <button data-rate="0.72">慢速</button>
+          <button data-rate="0.9">正常</button>
+          <button data-rate="1.08">快速</button>
+        </div>
+      </div>
+      <button class="ghost-button wide" data-action="voice-preview">🔊 试听 “Practice makes progress.”</button>
+    </section>
+    <section class="settings-section">
+      <h3>数据</h3>
+      <p>学习记录仅保存在当前浏览器。导出文件包含单词记忆曲线、收藏、每日活动和训练完成记录。</p>
+      <div class="dialog-actions">
+        <button class="primary-button" data-export>导出学习记录</button>
+        <button class="secondary-button" data-import>导入学习记录</button>
+        <button class="danger-button" data-reset>清空记录</button>
+      </div>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+    </section>
+    <section class="settings-section">
+      <h3>来源与边界</h3>
+      <p>高频词序及中英释义来自 MIT 授权的 high-frequency-vocabulary，词频基础为 Peter Norvig 的英文语料统计。初中、高考、四级、六级、考研、托福和 SAT 标签来自 BSD-3-Clause 授权的 KyleBing/english-vocabulary。发音使用浏览器原生语音。口语反馈只评估可识别的词数和流利度参考，不等同于专业发音评分。</p>
+    </section>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/vocabulary.js"></script>
+  <script src="data/curriculum.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
