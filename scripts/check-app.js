@@ -70,6 +70,11 @@ keydown(window, ' ');
 check(app().includes('data-grade="1"') && app().includes('data-grade="5"'), '揭示单词后应显示四档评分');
 check(app().includes('1</kbd> 忘记') && app().includes('4</kbd> 很熟'), '评分区应显示键盘快捷键');
 check(Boolean(document.querySelector('.exam-tag')), '单词卡应显示所属考试标签');
+const firstWordRank = Number(
+  (document.querySelector('.word-pos').textContent.match(/#(\d+)/) || [])[1]
+);
+check(firstWordRank >= 800, '默认新词应从日常核心及以上开始，而不是 on、by 等基础功能词');
+check(document.querySelector('.word-meaning-reveal').textContent.length <= 140, '单词卡释义摘要不应过长');
 keydown(window, '3');
 check(app().includes('2 / 20'), '评分后应进入下一个词');
 const savedState = JSON.parse(window.localStorage.getItem('english_forge_state_v1'));

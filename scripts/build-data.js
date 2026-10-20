@@ -57,6 +57,16 @@ function cleanMeaning(meaning) {
     .replace(/\s+,/g, ',');
 }
 
+function shortMeaning(meaning) {
+  const chunks = meaning.split(/,(?=(?:n|v|vt|vi|adj|adv|prep|pron|conj|art|num|aux|int|abbr|det|modal)\.)/);
+  let summary = chunks.slice(0, 2).join(',');
+  if (summary.length <= 105) return summary;
+  const clipped = summary.slice(0, 105);
+  const boundary = Math.max(clipped.lastIndexOf('；'), clipped.lastIndexOf(','));
+  summary = boundary >= 42 ? clipped.slice(0, boundary) : clipped;
+  return summary.replace(/[，,；;]\s*$/, '');
+}
+
 function bandForRank(rank) {
   if (rank <= 800) return { key: 'foundation', label: '基础高频', color: '#5eead4' };
   if (rank <= 2000) return { key: 'everyday', label: '日常核心', color: '#60a5fa' };
@@ -122,6 +132,7 @@ const words = records
       word: record.word,
       phonetic: record.phonetic.replace(/^\/|\/$/g, ''),
       meaning: record.meaning,
+      shortMeaning: shortMeaning(record.meaning),
       pos: extractPos(record.meaning),
       rank: record.rank,
       band: band.key,

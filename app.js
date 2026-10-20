@@ -509,13 +509,28 @@
     const due = source
       .filter(word => state.records[word.id] && state.records[word.id].dueAt <= Date.now())
       .sort((a, b) => state.records[a.id].dueAt - state.records[b.id].dueAt);
-    const fresh = source.filter(word => !state.records[word.id]);
+    const fresh = source
+      .filter(word => !state.records[word.id])
+      .sort((a, b) => a.rank - b.rank);
+    const preferredStart = profile.band !== 'all'
+      ? 0
+      : {
+          junior: 0,
+          high: 350,
+          cet4: 800,
+          cet6: 1200,
+          kaoyan: 1200,
+          toefl: 1200,
+          sat: 1200
+        }[profile.exam] || 800;
+    const preferredFresh = fresh.filter(word => word.rank >= preferredStart);
+    const remainingFresh = fresh.filter(word => word.rank < preferredStart);
     const later = source
       .filter(word => state.records[word.id] && state.records[word.id].dueAt > Date.now())
       .sort((a, b) => state.records[a.id].lastSeenAt - state.records[b.id].lastSeenAt);
     const pool = mode === 'review'
       ? due.concat(later)
-      : due.concat(fresh, later);
+      : due.concat(preferredFresh, remainingFresh, later);
     return pool.slice(0, limit);
   }
 
@@ -1220,7 +1235,7 @@
         <div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div>
         <div class="word-pos">${escapeHtml(word.pos)} · #${word.rank}</div>
         ${examBadgeMarkup(word)}
-        <div class="word-meaning-reveal">${escapeHtml(word.meaning)}</div>
+        <div class="word-meaning-reveal">${escapeHtml(word.shortMeaning || word.meaning)}</div>
         <div class="word-card-actions">
           <button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听单词</button>
           <button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button>
@@ -1230,30 +1245,30 @@
       const choiceWords = currentChoiceWords(word);
       front = `
         <span class="eyebrow">${mode === 'meaning-choice' ? 'CHOOSE THE MEANING' : 'CHOOSE THE ENGLISH'}</span>
-        <div class="word-card-word${mode === 'english-choice' ? ' meaning' : ''}">${escapeHtml(mode === 'meaning-choice' ? word.word : word.meaning)}</div>
+        <div class="word-card-word${mode === 'english-choice' ? ' meaning' : ''}">${escapeHtml(mode === 'meaning-choice' ? word.word : word.shortMeaning || word.meaning)}</div>
         ${mode === 'meaning-choice' ? `<div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div>` : ''}
         <div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)} · #${word.rank}</div>
         ${examBadgeMarkup(word)}
         <div class="word-choice-grid">
           ${choiceWords.map(option => `
-            <button data-word-choice="${option.id}">${escapeHtml(mode === 'meaning-choice' ? option.meaning : option.word)}</button>
+            <button data-word-choice="${option.id}">${escapeHtml(mode === 'meaning-choice' ? option.shortMeaning || option.meaning : option.word)}</button>
           `).join('')}
         </div>
       `;
     } else if (isTyped) {
       front = `
         <span class="eyebrow">${mode === 'listening' ? 'LISTEN & TYPE' : 'SPELLING CHALLENGE'}</span>
-        <div class="word-card-word meaning">${mode === 'listening' ? '听发音，写出单词' : escapeHtml(word.meaning)}</div>
+        <div class="word-card-word meaning">${mode === 'listening' ? '听发音，写出单词' : escapeHtml(word.shortMeaning || word.meaning)}</div>
         ${mode === 'listening' ? `<div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 再听一次</button></div>` : ''}
         <div class="word-band" style="--band-color:${word.bandColor}">${escapeHtml(word.bandLabel)}</div>
       `;
     } else if (wordSession.revealed) {
       front = promptIsMeaning
-        ? `<div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-pos">${escapeHtml(word.pos)} · #${word.rank}</div>${examBadgeMarkup(word)}<div class="word-meaning-reveal">${escapeHtml(word.meaning)}</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`
-        : `<div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-meaning-reveal">${escapeHtml(word.meaning)}</div><div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`;
+        ? `<div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-pos">${escapeHtml(word.pos)} · #${word.rank}</div>${examBadgeMarkup(word)}<div class="word-meaning-reveal">${escapeHtml(word.shortMeaning || word.meaning)}</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`
+        : `<div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-meaning-reveal">${escapeHtml(word.shortMeaning || word.meaning)}</div><div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`;
     } else {
       front = promptIsMeaning
-        ? `<span class="eyebrow">RETRIEVE THE ENGLISH</span><div class="word-card-word meaning">${escapeHtml(word.meaning)}</div><div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-band">先在脑中提取英文</div>`
+        ? `<span class="eyebrow">RETRIEVE THE ENGLISH</span><div class="word-card-word meaning">${escapeHtml(word.shortMeaning || word.meaning)}</div><div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-band">先在脑中提取英文</div>`
         : `<span class="eyebrow">RETRIEVE THE MEANING</span><div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button></div><div class="word-band" style="--band-color:${word.bandColor}">${escapeHtml(word.bandLabel)} · #${word.rank}</div>`;
     }
     app.innerHTML = `
@@ -1318,7 +1333,7 @@
     return `
       <div class="feedback ${lastCorrect ? 'good' : 'bad'}">
         <strong>${lastCorrect ? '选择正确' : '选择错误'}</strong>
-        ${lastCorrect ? '连接已经建立。下一项继续保持主动提取。' : `正确答案是 ${escapeHtml(word.word)}：${escapeHtml(word.meaning)}`}
+        ${lastCorrect ? '连接已经建立。下一项继续保持主动提取。' : `正确答案是 ${escapeHtml(word.word)}：${escapeHtml(word.shortMeaning || word.meaning)}`}
       </div>
       <div class="typed-actions" style="margin-top:10px">
         <button class="primary-button" data-next-word>下一项</button>
