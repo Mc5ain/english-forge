@@ -38,7 +38,8 @@
   ];
   const EXAM_FILTERS = [
     { key: 'all', label: '全部' },
-    ...Object.entries(VOCAB.exams || {}).map(([key, label]) => ({ key, label }))
+    ...Object.entries(VOCAB.exams || {}).map(([key, label]) => ({ key, label })),
+    { key: 'none', label: '未分类' }
   ];
   const STATUS_FILTERS = [
     { key: 'all', label: '全部' },
@@ -417,7 +418,8 @@
     const state = loadState();
     return WORDS.filter(word => {
       if (profile.band !== 'all' && word.band !== profile.band) return false;
-      if (profile.exam !== 'all' && !word.exams.includes(profile.exam)) return false;
+      if (profile.exam === 'none' && word.exams.length) return false;
+      if (profile.exam !== 'all' && profile.exam !== 'none' && !word.exams.includes(profile.exam)) return false;
       if (!matchesPartOfSpeech(word, profile.pos)) return false;
       return matchesLearningStatus(word, profile.status, state);
     });
@@ -464,8 +466,10 @@
         ? value === 'all' || word.band === value
         : profile.band === 'all' || word.band === profile.band;
       const examMatch = type === 'exam'
-        ? value === 'all' || word.exams.includes(value)
-        : profile.exam === 'all' || word.exams.includes(profile.exam);
+        ? value === 'all' ||
+          (value === 'none' ? !word.exams.length : word.exams.includes(value))
+        : profile.exam === 'all' ||
+          (profile.exam === 'none' ? !word.exams.length : word.exams.includes(profile.exam));
       const posMatch = matchesPartOfSpeech(word, type === 'pos' ? value : profile.pos);
       const statusMatch = matchesLearningStatus(word, type === 'status' ? value : profile.status, state);
       return bandMatch && examMatch && posMatch && statusMatch;
@@ -1078,6 +1082,7 @@
             <span>考试</span>
             <div class="filter-chips">
               ${EXAM_FILTERS.map(item => `<button class="${profile.exam === item.key ? 'active' : ''}" data-vocab-exam="${item.key}">${item.label} <small>${countWordsForFilter('exam', item.key)}</small></button>`).join('')}
+              <small class="filter-note">“未分类”是没有匹配到公开考试清单的词</small>
             </div>
           </div>
           <div class="filter-group">
@@ -1085,12 +1090,14 @@
             <div class="filter-chips">
               <button class="${profile.band === 'all' ? 'active' : ''}" data-vocab-band="all">全部 <small>${countWordsForFilter('band', 'all')}</small></button>
               ${Object.entries(VOCAB.bands).map(([key, band]) => `<button class="${profile.band === key ? 'active' : ''}" data-vocab-band="${key}">${escapeHtml(band.label)} <small>${countWordsForFilter('band', key)}</small></button>`).join('')}
+              <small class="filter-note">按原始语料序位统计，考试补充词多落在高阶段</small>
             </div>
           </div>
           <div class="filter-group">
             <span>词性</span>
             <div class="filter-chips">
               ${POS_FILTERS.map(item => `<button class="${profile.pos === item.key ? 'active' : ''}" data-vocab-pos="${item.key}">${item.label} <small>${countWordsForFilter('pos', item.key)}</small></button>`).join('')}
+              <small class="filter-note">一个词可属于多个词性，因此分类数会重叠</small>
             </div>
           </div>
           <div class="filter-group">
@@ -2227,7 +2234,8 @@
     const query = normalize(dictionaryState.query);
     return WORDS.filter(word => {
       if (dictionaryState.band !== 'all' && word.band !== dictionaryState.band) return false;
-      if (dictionaryState.exam !== 'all' && !word.exams.includes(dictionaryState.exam)) return false;
+      if (dictionaryState.exam === 'none' && word.exams.length) return false;
+      if (dictionaryState.exam !== 'all' && dictionaryState.exam !== 'none' && !word.exams.includes(dictionaryState.exam)) return false;
       if (!query) return true;
       return normalize(word.word).includes(query) || normalize(word.meaning).includes(query);
     });
@@ -2253,6 +2261,7 @@
           <select id="dictionary-exam" class="select-control">
             <option value="all">全部考试</option>
             ${Object.entries(VOCAB.exams || {}).map(([key, label]) => `<option value="${key}" ${dictionaryState.exam === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+            <option value="none" ${dictionaryState.exam === 'none' ? 'selected' : ''}>未分类</option>
           </select>
         </div>
         <div class="dictionary-meta"><span id="dictionary-count"></span><span>词序来自真实英文语料频率</span></div>

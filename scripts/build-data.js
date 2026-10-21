@@ -23,6 +23,27 @@ function normalizeSpace(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+function cleanPhonetic(value) {
+  const groups = String(value || '')
+    .replace(/^\/|\/$/g, '')
+    .trim()
+    .split(/\s{2,}/)
+    .map(normalizeSpace)
+    .filter(Boolean);
+  const unique = [];
+  const seen = new Set();
+  for (const group of groups) {
+    const tokens = group.split(' ').filter(Boolean);
+    const cleaned = [...new Set(tokens)].join(' ').replace(/\s*;\s*/g, '; ');
+    const key = cleaned.replace(/\s*;\s*/g, ';').replace(/:$/, '').toLowerCase();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      unique.push(cleaned);
+    }
+  }
+  return unique.join(' · ');
+}
+
 function extractPos(meaning) {
   const labels = {
     n: '名词',
@@ -122,7 +143,7 @@ for (const rawLine of lines) {
     continue;
   }
   if (!current.phonetic) {
-    current.phonetic = normalizeSpace(line);
+    current.phonetic = line.trim();
     continue;
   }
   current.meaning = cleanMeaning(line);
@@ -146,7 +167,7 @@ const words = records
     return {
       id: `w${String(index + 1).padStart(4, '0')}`,
       word: record.word,
-      phonetic: record.phonetic.replace(/^\/|\/$/g, ''),
+      phonetic: cleanPhonetic(record.phonetic),
       meaning: record.meaning,
       shortSenses,
       pos: extractPos(record.meaning),

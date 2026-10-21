@@ -14,7 +14,7 @@ vm.runInContext(
 const data = context.window.ENGLISH_VOCAB;
 const words = data.words;
 const errors = [];
-const seen = new Set();
+  const seen = new Set();
 
 function check(condition, message) {
   if (!condition) errors.push(message);
@@ -24,6 +24,12 @@ check(words.length >= 10000, `词库应包含基础高频词和考试词，当�
 check(new Set(words.map(word => word.id)).size === words.length, '存在重复词条 ID');
 for (const word of words) {
   check(Boolean(word.word && word.meaning && word.pos), `词条字段缺失：${word.id}`);
+  check(Boolean(word.phonetic), `音标缺失：${word.word}`);
+  const phoneticParts = word.phonetic.split(/\s+/).filter(Boolean);
+  check(
+    !(phoneticParts.length >= 3 && phoneticParts.every(part => part === phoneticParts[0])),
+    `音标重复：${word.word}`
+  );
   check(Array.isArray(word.shortSenses) && word.shortSenses.length > 0, `结构化释义缺失：${word.id}`);
   check(
     word.shortSenses.reduce((sum, sense) => sum + sense.text.length, 0) <= word.meaning.length,

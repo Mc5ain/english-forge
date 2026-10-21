@@ -100,6 +100,7 @@ check(app().includes('1 / 1') && app().includes('错题回炉'), '未答错但�
 click(window, '[data-exit-session]');
 check(app().includes('词汇分类') && app().includes('看英文，选中文') && app().includes('看中文，选英文'), '词汇页应提供分类和新增选择题模式');
 check(document.querySelectorAll('[data-vocab-exam]').length >= 7, '词汇页应提供高考、四六级、考研等考试分类');
+check(Boolean(document.querySelector('[data-vocab-exam="none"]')), '词汇页应提供未分类考试词筛选');
 check(app().includes('考试词库覆盖') && document.querySelectorAll('.exam-overview-card').length === 7, '词汇页应显示七类考试覆盖进度');
 click(window, '[data-vocab-exam="cet6"]');
 const examFilterProfile = JSON.parse(window.localStorage.getItem('english_forge_profile_v1'));

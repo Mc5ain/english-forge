@@ -46,3 +46,5 @@ npm run check
 ## 数据与隐私
 
 高频词序和中英释义来自 MIT 授权的高频词项目，词频基础为 Peter Norvig 的英文语料统计，许可文件保存在 `data/source/HIGH-FREQUENCY-LICENSE.txt`。初中、高考、四级、六级、考研、托福和 SAT 标签来自 BSD-3-Clause 授权的 `KyleBing/english-vocabulary`，许可文件保存在 `data/source/exam/LICENSE.txt`。朗读使用浏览器原生语音；学习记录通过 `localStorage` 保存在本机。
+
+应用代码的授权状态见根目录 `LICENSE.md`；第三方数据继续适用各自的许可证。
