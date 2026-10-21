@@ -27,6 +27,7 @@ const appSource = read('app.js');
 const icon = read('assets/icon.svg');
 const highFrequencyLicense = read('data/source/HIGH-FREQUENCY-LICENSE.txt');
 const examLicense = read('data/source/exam/LICENSE.txt');
+const ecdictLicense = read('data/source/ECDICT-LICENSE.txt');
 let html = read('index.html');
 
 html = replaceOnce(
@@ -73,7 +74,10 @@ const licenseNotice = [
   highFrequencyLicense.trim(),
   '',
   'Exam vocabulary license:',
-  examLicense.trim()
+  examLicense.trim(),
+  '',
+  'ECDICT supplement license:',
+  ecdictLicense.trim()
 ].join('\n').replace(/--/g, '- -');
 html = html.replace('<!doctype html>', `<!doctype html>\n<!--\n${licenseNotice}\n-->`);
 

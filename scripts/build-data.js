@@ -57,7 +57,9 @@ function extractPos(meaning) {
     vt: '及物动词',
     vi: '不及物动词',
     adj: '形容词',
+    a: '形容词',
     adv: '副词',
+    ad: '副词',
     prep: '介词',
     pron: '代词',
     conj: '连词',
@@ -70,7 +72,7 @@ function extractPos(meaning) {
     modal: '情态动词'
   };
   const found = [];
-  for (const match of meaning.matchAll(/(?:^|,)(n|vt|vi|v|adj|adv|prep|pron|conj|art|num|aux|int|abbr|det|modal)\./g)) {
+  for (const match of meaning.matchAll(/(?:^|,)(n|vt|vi|v|adj|adv|a|ad|prep|pron|conj|art|num|aux|int|abbr|det|modal)\./g)) {
     const label = labels[match[1]];
     if (label && !found.includes(label)) found.push(label);
   }
@@ -96,7 +98,7 @@ function shortMeaning(meaning) {
 }
 
 function parseSenses(meaning) {
-  const marker = '(?:modal|prep|pron|conj|abbr|adj|adv|aux|det|art|num|int|vt|vi|n|v)';
+  const marker = '(?:modal|prep|pron|conj|abbr|adj|adv|aux|det|art|num|int|vt|vi|ad|a|n|v)';
   return meaning
     .split(new RegExp(`,(?=${marker}\\.)`))
     .map(chunk => {
@@ -150,6 +152,9 @@ function loadTextbookMembership() {
 
 const examTags = loadExamTags();
 const textbookMembership = loadTextbookMembership();
+const ecdictSupplement = JSON.parse(
+  fs.readFileSync(path.join(root, 'data/source/xln-ecdict.json'), 'utf8')
+).words;
 const textbookUnitCounts = Object.fromEntries(Object.keys(TEXTBOOK_SOURCES).map(key => [key, 0]));
 for (const entry of textbookMembership.values()) {
   for (const unit of entry.units) {
@@ -213,6 +218,33 @@ const words = records
     };
   });
 
+const seenWords = new Set(words.map(word => word.word));
+let supplementalRank = Math.max(...words.map(word => word.rank)) + 1;
+for (const entry of ecdictSupplement) {
+  if (seenWords.has(entry.word)) continue;
+  const meaning = cleanMeaning(entry.meaning);
+  if (!meaning) continue;
+  const rank = supplementalRank;
+  supplementalRank += 1;
+  const band = bandForRank(rank);
+  words.push({
+    id: `w${String(words.length + 1).padStart(4, '0')}`,
+    word: entry.word,
+    phonetic: cleanPhonetic(entry.phonetic),
+    meaning,
+    shortSenses: parseSenses(shortMeaning(meaning)).slice(0, 2),
+    pos: extractPos(meaning),
+    rank,
+    band: band.key,
+    bandLabel: band.label,
+    bandColor: band.color,
+    exams: entry.exams || [],
+    textbooks: entry.books || [],
+    textbookUnits: entry.units || []
+  });
+  seenWords.add(entry.word);
+}
+
 if (words.length < 10000) {
   throw new Error(`词库生成不足：仅解析出 ${words.length} 个词条`);
 }
@@ -241,6 +273,11 @@ const payload = {
     textbooks: {
       repository: 'https://github.com/ackuikui/english-study',
       note: 'Only word forms and book/unit membership are used; definitions remain in the existing vocabulary sources.'
+    },
+    supplement: {
+      name: 'ECDICT',
+      repository: 'https://github.com/skywind3000/ECDICT',
+      license: 'MIT'
     }
   },
   exams: Object.fromEntries(

@@ -194,6 +194,15 @@
       .replace(/'/g, '&#039;');
   }
 
+  function phoneticText(word) {
+    return word && word.phonetic ? `/${escapeHtml(word.phonetic)}/` : '';
+  }
+
+  function phoneticMarkup(word) {
+    const text = phoneticText(word);
+    return text ? `<div class="word-phonetic">${text}</div>` : '';
+  }
+
   function normalize(value) {
     return String(value || '').toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim();
   }
@@ -1382,7 +1391,7 @@
     if (wordSession.answered) {
       front = `
         <div class="word-card-word">${escapeHtml(word.word)}</div>
-        <div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div>
+        ${phoneticMarkup(word)}
         <div class="word-pos">${escapeHtml(word.pos)} · #${word.rank}</div>
         ${examBadgeMarkup(word)}
         ${definitionMarkup(word)}
@@ -1398,7 +1407,7 @@
         ${mode === 'meaning-choice'
           ? `<div class="word-card-word">${escapeHtml(word.word)}</div>`
           : definitionMarkup(word, true)}
-        ${mode === 'meaning-choice' ? `<div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div>` : ''}
+        ${mode === 'meaning-choice' ? phoneticMarkup(word) : ''}
         <div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)} · #${word.rank}</div>
         ${examBadgeMarkup(word)}
         <div class="word-choice-grid">
@@ -1418,12 +1427,12 @@
       `;
     } else if (wordSession.revealed) {
       front = promptIsMeaning
-        ? `<div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-pos">${escapeHtml(word.pos)} · #${word.rank}</div>${examBadgeMarkup(word)}${definitionMarkup(word)}<div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`
-        : `<div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div>${definitionMarkup(word)}<div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`;
+        ? `<div class="word-card-word">${escapeHtml(word.word)}</div>${phoneticMarkup(word)}<div class="word-pos">${escapeHtml(word.pos)} · #${word.rank}</div>${examBadgeMarkup(word)}${definitionMarkup(word)}<div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`
+        : `<div class="word-card-word">${escapeHtml(word.word)}</div>${phoneticMarkup(word)}${definitionMarkup(word)}<div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button><button class="speak-button" data-toggle-favorite="${escapeHtml(word.id)}">${favorite ? '★ 已收藏' : '☆ 收藏'}</button></div>`;
     } else {
       front = promptIsMeaning
         ? `<span class="eyebrow">RETRIEVE THE ENGLISH</span>${definitionMarkup(word, true)}<div class="word-pos">${escapeHtml(word.pos)} · ${escapeHtml(word.bandLabel)}</div><div class="word-band">先在脑中提取英文</div>`
-        : `<span class="eyebrow">RETRIEVE THE MEANING</span><div class="word-card-word">${escapeHtml(word.word)}</div><div class="word-phonetic">/${escapeHtml(word.phonetic)}/</div><div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button></div><div class="word-band" style="--band-color:${word.bandColor}">${escapeHtml(word.bandLabel)} · #${word.rank}</div>`;
+        : `<span class="eyebrow">RETRIEVE THE MEANING</span><div class="word-card-word">${escapeHtml(word.word)}</div>${phoneticMarkup(word)}<div class="word-card-actions"><button class="speak-button" data-action="speak" data-speak="${escapeHtml(word.word)}">🔊 听发音</button></div><div class="word-band" style="--band-color:${word.bandColor}">${escapeHtml(word.bandLabel)} · #${word.rank}</div>`;
     }
     app.innerHTML = `
       <section class="view session-shell">
@@ -1617,7 +1626,7 @@
                 return `
                   <div class="word-row">
                     <div class="word-row-main">
-                      <div class="word-row-title"><strong>${escapeHtml(word.word)}</strong><span>/${escapeHtml(word.phonetic)}/</span><span>${escapeHtml(word.bandLabel)}</span></div>
+                      <div class="word-row-title"><strong>${escapeHtml(word.word)}</strong><span>${phoneticText(word)}</span><span>${escapeHtml(word.bandLabel)}</span></div>
                       <div class="word-row-meaning">${escapeHtml(word.meaning)}</div>
                     </div>
                     <div class="word-row-tools">
@@ -2171,7 +2180,7 @@
               <span class="eyebrow">WORD LOOKUP</span>
               <h3>${escapeHtml(lookup.word)}</h3>
               ${lookupResult.form !== lookup.word ? `<div class="lookup-form">文中形式 ${escapeHtml(lookupResult.form)} · 对应词条 ${escapeHtml(lookup.word)}</div>` : ''}
-              <div class="phonetic">/${escapeHtml(lookup.phonetic)}/</div>
+              ${phoneticText(lookup) ? `<div class="phonetic">${phoneticText(lookup)}</div>` : ''}
               <div class="word-pos">${escapeHtml(lookup.pos)} · ${escapeHtml(lookup.bandLabel)} · #${lookup.rank}</div>
               ${examBadgeMarkup(lookup)}
               <div class="meaning">${escapeHtml(lookup.meaning)}</div>
@@ -2422,7 +2431,7 @@
     container.innerHTML = visible.map(word => `
       <div class="word-row">
         <div class="word-row-main">
-          <div class="word-row-title"><strong>${escapeHtml(word.word)}</strong><span>/${escapeHtml(word.phonetic)}/</span><span>${escapeHtml(word.pos)}</span><span style="color:${word.bandColor}">${escapeHtml(word.bandLabel)}</span></div>
+          <div class="word-row-title"><strong>${escapeHtml(word.word)}</strong><span>${phoneticText(word)}</span><span>${escapeHtml(word.pos)}</span><span style="color:${word.bandColor}">${escapeHtml(word.bandLabel)}</span></div>
           ${examBadgeMarkup(word)}
           <div class="word-row-meaning">${escapeHtml(word.meaning)}</div>
         </div>

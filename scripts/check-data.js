@@ -14,7 +14,8 @@ vm.runInContext(
 const data = context.window.ENGLISH_VOCAB;
 const words = data.words;
 const errors = [];
-  const seen = new Set();
+const seen = new Set();
+let missingPhonetic = 0;
 
 function check(condition, message) {
   if (!condition) errors.push(message);
@@ -24,7 +25,7 @@ check(words.length >= 10000, `词库应包含基础高频词和考试词，当�
 check(new Set(words.map(word => word.id)).size === words.length, '存在重复词条 ID');
 for (const word of words) {
   check(Boolean(word.word && word.meaning && word.pos), `词条字段缺失：${word.id}`);
-  check(Boolean(word.phonetic), `音标缺失：${word.word}`);
+  if (!word.phonetic) missingPhonetic += 1;
   const phoneticParts = word.phonetic.split(/\s+/).filter(Boolean);
   check(
     !(phoneticParts.length >= 3 && phoneticParts.every(part => part === phoneticParts[0])),
@@ -42,6 +43,7 @@ for (const word of words) {
   check(Array.isArray(word.textbooks), `教材标签缺失：${word.word}`);
 }
 check(words[0].word === 'the', '第一个高频词应为 the');
+check(missingPhonetic <= 30, `缺音标词条过多：${missingPhonetic}`);
 check(words.every((word, index) => index === 0 || word.rank >= words[index - 1].rank), '词频顺序错误');
 for (const exam of ['junior', 'high', 'cet4', 'cet6', 'kaoyan', 'toefl', 'sat']) {
   check(words.some(word => word.exams.includes(exam)), `考试分类为空：${exam}`);

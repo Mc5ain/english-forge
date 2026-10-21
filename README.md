@@ -48,6 +48,6 @@ npm run check
 
 高频词序和中英释义来自 MIT 授权的高频词项目，词频基础为 Peter Norvig 的英文语料统计，许可文件保存在 `data/source/HIGH-FREQUENCY-LICENSE.txt`。初中、高考、四级、六级、考研、托福和 SAT 标签来自 BSD-3-Clause 授权的 `KyleBing/english-vocabulary`，许可文件保存在 `data/source/exam/LICENSE.txt`。朗读使用浏览器原生语音；学习记录通过 `localStorage` 保存在本机。
 
-《新视野大学英语》第 1–4 册只导入英文词形、册别和单元映射，中文释义继续使用现有授权词库。词形来源为 `ackuikui/english-study`；该仓库未声明独立许可证，因此映射数据只用于本学习项目，不应单独再分发。
+《新视野大学英语》第 1–4 册只导入英文词形、册别和单元映射。词形来源为 `ackuikui/english-study`；该仓库未声明独立许可证，因此映射数据只用于本学习项目，不应单独再分发。缺失词条的中英文释义使用 MIT 授权的 `skywind3000/ECDICT` 补充，许可文件保存在 `data/source/ECDICT-LICENSE.txt`。
 
 应用代码的授权状态见根目录 `LICENSE.md`；第三方数据继续适用各自的许可证。
