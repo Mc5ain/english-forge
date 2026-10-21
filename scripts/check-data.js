@@ -39,11 +39,15 @@ for (const word of words) {
   seen.add(word.word);
   check(Number.isInteger(word.rank) && word.rank > 0, `词频序号异常：${word.word}`);
   check(Array.isArray(word.exams), `考试标签缺失：${word.word}`);
+  check(Array.isArray(word.textbooks), `教材标签缺失：${word.word}`);
 }
 check(words[0].word === 'the', '第一个高频词应为 the');
 check(words.every((word, index) => index === 0 || word.rank >= words[index - 1].rank), '词频顺序错误');
 for (const exam of ['junior', 'high', 'cet4', 'cet6', 'kaoyan', 'toefl', 'sat']) {
   check(words.some(word => word.exams.includes(exam)), `考试分类为空：${exam}`);
+}
+for (const textbook of ['xln1', 'xln2', 'xln3', 'xln4']) {
+  check(words.some(word => word.textbooks.includes(textbook)), `教材分类为空：${textbook}`);
 }
 check(curriculum.grammar.length >= 24, '语法课程少于 24 节');
 check(curriculum.reading.length >= 10, '分级阅读少于 10 篇');

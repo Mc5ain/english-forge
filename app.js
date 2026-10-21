@@ -41,6 +41,11 @@
     ...Object.entries(VOCAB.exams || {}).map(([key, label]) => ({ key, label })),
     { key: 'none', label: '未分类' }
   ];
+  const TEXTBOOK_FILTERS = [
+    { key: 'all', label: '全部' },
+    ...Object.entries(VOCAB.textbooks || {}).map(([key, label]) => ({ key, label })),
+    { key: 'none', label: '未收录' }
+  ];
   const STATUS_FILTERS = [
     { key: 'all', label: '全部' },
     { key: 'new', label: '未学习' },
@@ -59,6 +64,7 @@
     dailyGoal: 20,
     band: 'all',
     exam: 'all',
+    textbook: 'all',
     pos: 'all',
     status: 'all',
     accent: 'en-US',
@@ -78,6 +84,9 @@
         exam: value && EXAM_FILTERS.some(item => item.key === value.exam)
           ? value.exam
           : defaultProfile.exam,
+        textbook: value && TEXTBOOK_FILTERS.some(item => item.key === value.textbook)
+          ? value.textbook
+          : defaultProfile.textbook,
         pos: value && POS_FILTERS.some(item => item.key === value.pos)
           ? value.pos
           : defaultProfile.pos,
@@ -142,7 +151,7 @@
   let speakingResult = null;
   let readingState = null;
   let lessonState = null;
-  const dictionaryState = { query: '', band: 'all', exam: 'all', limit: 60 };
+  const dictionaryState = { query: '', band: 'all', exam: 'all', textbook: 'all', limit: 60 };
 
   function dateKey(date = new Date()) {
     const value = date;
@@ -420,6 +429,8 @@
       if (profile.band !== 'all' && word.band !== profile.band) return false;
       if (profile.exam === 'none' && word.exams.length) return false;
       if (profile.exam !== 'all' && profile.exam !== 'none' && !word.exams.includes(profile.exam)) return false;
+      if (profile.textbook === 'none' && word.textbooks.length) return false;
+      if (profile.textbook !== 'all' && profile.textbook !== 'none' && !word.textbooks.includes(profile.textbook)) return false;
       if (!matchesPartOfSpeech(word, profile.pos)) return false;
       return matchesLearningStatus(word, profile.status, state);
     });
@@ -470,20 +481,30 @@
           (value === 'none' ? !word.exams.length : word.exams.includes(value))
         : profile.exam === 'all' ||
           (profile.exam === 'none' ? !word.exams.length : word.exams.includes(profile.exam));
+      const textbookMatch = type === 'textbook'
+        ? value === 'all' ||
+          (value === 'none' ? !word.textbooks.length : word.textbooks.includes(value))
+        : profile.textbook === 'all' ||
+          (profile.textbook === 'none' ? !word.textbooks.length : word.textbooks.includes(profile.textbook));
       const posMatch = matchesPartOfSpeech(word, type === 'pos' ? value : profile.pos);
       const statusMatch = matchesLearningStatus(word, type === 'status' ? value : profile.status, state);
-      return bandMatch && examMatch && posMatch && statusMatch;
+      return bandMatch && examMatch && textbookMatch && posMatch && statusMatch;
     }).length;
   }
 
   function examBadgeMarkup(word) {
-    const keys = (word.exams || []).filter(key => VOCAB.exams[key]);
-    if (!keys.length) return '';
-    const visible = keys.slice(0, 4);
-    const overflow = keys.length - visible.length;
+    const examKeys = (word.exams || []).filter(key => VOCAB.exams[key]);
+    const textbookKeys = (word.textbooks || []).filter(key => VOCAB.textbooks[key]);
+    const tags = [
+      ...examKeys.map(key => ({ label: VOCAB.exams[key], type: 'exam' })),
+      ...textbookKeys.map(key => ({ label: VOCAB.textbooks[key], type: 'textbook' }))
+    ];
+    if (!tags.length) return '';
+    const visible = tags.slice(0, 5);
+    const overflow = tags.length - visible.length;
     return `
       <div class="exam-tag-row">
-        ${visible.map(key => `<span class="exam-tag">${escapeHtml(VOCAB.exams[key])}</span>`).join('')}
+        ${visible.map(tag => `<span class="exam-tag${tag.type === 'textbook' ? ' textbook' : ''}">${escapeHtml(tag.label)}</span>`).join('')}
         ${overflow > 0 ? `<span class="exam-tag">+${overflow}</span>` : ''}
       </div>
     `;
@@ -527,6 +548,21 @@
         total: words.length,
         learned,
         mastered,
+        percent: words.length ? Math.round((learned / words.length) * 100) : 0
+      };
+    });
+  }
+
+  function textbookProgress() {
+    const state = loadState();
+    return Object.entries(VOCAB.textbooks || {}).map(([key, label]) => {
+      const words = WORDS.filter(word => word.textbooks.includes(key));
+      const learned = words.filter(word => state.records[word.id]).length;
+      return {
+        key,
+        label,
+        total: words.length,
+        learned,
         percent: words.length ? Math.round((learned / words.length) * 100) : 0
       };
     });
@@ -1086,6 +1122,13 @@
             </div>
           </div>
           <div class="filter-group">
+            <span>教材</span>
+            <div class="filter-chips">
+              ${TEXTBOOK_FILTERS.map(item => `<button class="${profile.textbook === item.key ? 'active' : ''}" data-vocab-textbook="${item.key}">${item.label} <small>${countWordsForFilter('textbook', item.key)}</small></button>`).join('')}
+              <small class="filter-note">新视野按第 1–4 册导入，只使用英文词形与册/单元归属</small>
+            </div>
+          </div>
+          <div class="filter-group">
             <span>词频</span>
             <div class="filter-chips">
               <button class="${profile.band === 'all' ? 'active' : ''}" data-vocab-band="all">全部 <small>${countWordsForFilter('band', 'all')}</small></button>
@@ -1180,6 +1223,20 @@
               <strong>${exam.percent}%</strong>
               <small>${exam.learned} / ${exam.total} 已学 · ${exam.mastered} 已掌握</small>
               <div class="exam-overview-track"><i style="width:${exam.percent}%"></i></div>
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="section-head">
+          <div><h2>新视野大学英语覆盖</h2><p>按第 1–4 册统计已进入记忆系统的词；点击可切换对应教材范围。</p></div>
+        </div>
+        <div class="textbook-overview-grid">
+          ${textbookProgress().map(book => `
+            <button class="exam-overview-card${profile.textbook === book.key ? ' active' : ''}" data-vocab-textbook="${book.key}">
+              <span>${escapeHtml(book.label)}</span>
+              <strong>${book.percent}%</strong>
+              <small>${book.learned} / ${book.total} 已学</small>
+              <div class="exam-overview-track"><i style="width:${book.percent}%"></i></div>
             </button>
           `).join('')}
         </div>
@@ -2236,6 +2293,8 @@
       if (dictionaryState.band !== 'all' && word.band !== dictionaryState.band) return false;
       if (dictionaryState.exam === 'none' && word.exams.length) return false;
       if (dictionaryState.exam !== 'all' && dictionaryState.exam !== 'none' && !word.exams.includes(dictionaryState.exam)) return false;
+      if (dictionaryState.textbook === 'none' && word.textbooks.length) return false;
+      if (dictionaryState.textbook !== 'all' && dictionaryState.textbook !== 'none' && !word.textbooks.includes(dictionaryState.textbook)) return false;
       if (!query) return true;
       return normalize(word.word).includes(query) || normalize(word.meaning).includes(query);
     });
@@ -2262,6 +2321,11 @@
             <option value="all">全部考试</option>
             ${Object.entries(VOCAB.exams || {}).map(([key, label]) => `<option value="${key}" ${dictionaryState.exam === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
             <option value="none" ${dictionaryState.exam === 'none' ? 'selected' : ''}>未分类</option>
+          </select>
+          <select id="dictionary-textbook" class="select-control">
+            <option value="all">全部教材</option>
+            ${Object.entries(VOCAB.textbooks || {}).map(([key, label]) => `<option value="${key}" ${dictionaryState.textbook === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+            <option value="none" ${dictionaryState.textbook === 'none' ? 'selected' : ''}>未收录</option>
           </select>
         </div>
         <div class="dictionary-meta"><span id="dictionary-count"></span><span>词序来自真实英文语料频率</span></div>
@@ -2448,6 +2512,9 @@
     if (type === 'exam') {
       if (!EXAM_FILTERS.some(item => item.key === value)) return;
       profile.exam = value;
+    } else if (type === 'textbook') {
+      if (!TEXTBOOK_FILTERS.some(item => item.key === value)) return;
+      profile.textbook = value;
     } else if (type === 'pos') {
       if (!POS_FILTERS.some(item => item.key === value)) return;
       profile.pos = value;
@@ -2582,6 +2649,9 @@
             exam: EXAM_FILTERS.some(item => item.key === payload.profile.exam)
               ? payload.profile.exam
               : profile.exam,
+            textbook: TEXTBOOK_FILTERS.some(item => item.key === payload.profile.textbook)
+              ? payload.profile.textbook
+              : profile.textbook,
             pos: POS_FILTERS.some(item => item.key === payload.profile.pos)
               ? payload.profile.pos
               : profile.pos,
@@ -2652,6 +2722,11 @@
     const vocabExam = event.target.closest('[data-vocab-exam]');
     if (vocabExam) {
       setVocabClassification('exam', vocabExam.dataset.vocabExam);
+      return;
+    }
+    const vocabTextbook = event.target.closest('[data-vocab-textbook]');
+    if (vocabTextbook) {
+      setVocabClassification('textbook', vocabTextbook.dataset.vocabTextbook);
       return;
     }
     const vocabPos = event.target.closest('[data-vocab-pos]');
@@ -2876,6 +2951,11 @@
     }
     if (event.target.id === 'dictionary-exam') {
       dictionaryState.exam = event.target.value;
+      dictionaryState.limit = 60;
+      renderDictionaryResults();
+    }
+    if (event.target.id === 'dictionary-textbook') {
+      dictionaryState.textbook = event.target.value;
       dictionaryState.limit = 60;
       renderDictionaryResults();
     }

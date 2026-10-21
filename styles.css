@@ -1298,6 +1298,12 @@ html[data-theme="light"] .hero-ring::before {
   gap: 9px;
 }
 
+.textbook-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
 .exam-overview-card {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1682,6 +1688,12 @@ html[data-theme="light"] .hero-ring::before {
   font-size: 8px;
   font-weight: 750;
   letter-spacing: 0.04em;
+}
+
+.exam-tag.textbook {
+  border-color: rgba(116, 185, 255, 0.24);
+  background: rgba(116, 185, 255, 0.07);
+  color: var(--blue);
 }
 
 .lookup-form {
@@ -2565,7 +2577,7 @@ html[data-theme="light"] .hero-ring::before {
 
 .dictionary-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px 150px;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 145px);
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -3090,6 +3102,10 @@ html[data-theme="light"] .hero-ring::before {
 
   .dictionary-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .textbook-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .review-summary {

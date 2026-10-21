@@ -14,6 +14,12 @@ const EXAM_SOURCES = {
   toefl: { file: 'toefl.txt', label: '托福' },
   sat: { file: 'sat.txt', label: 'SAT' }
 };
+const TEXTBOOK_SOURCES = {
+  xln1: '新视野 1',
+  xln2: '新视野 2',
+  xln3: '新视野 3',
+  xln4: '新视野 4'
+};
 
 const lines = fs.readFileSync(sourceFile, 'utf8').split(/\r?\n/);
 const records = [];
@@ -126,7 +132,24 @@ function loadExamTags() {
   return tags;
 }
 
+function loadTextbookMembership() {
+  const file = path.join(root, 'data/source/xln-membership.tsv');
+  const entries = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+  const membership = new Map();
+  for (const entry of entries) {
+    if (!entry || entry.startsWith('#')) continue;
+    const [word, books = '', units = ''] = entry.split('\t');
+    if (!word) continue;
+    membership.set(word, {
+      books: books.split(',').filter(Boolean),
+      units: units.split(',').filter(Boolean)
+    });
+  }
+  return membership;
+}
+
 const examTags = loadExamTags();
+const textbookMembership = loadTextbookMembership();
 
 for (const rawLine of lines) {
   const line = rawLine.trim();
@@ -159,7 +182,7 @@ const words = records
     seen.add(key);
     return true;
   })
-  .filter(record => record.rank <= BASE_WORD_LIMIT || examTags.has(record.word))
+  .filter(record => record.rank <= BASE_WORD_LIMIT || examTags.has(record.word) || textbookMembership.has(record.word))
   .map((record, index) => {
     const band = bandForRank(record.rank);
     const short = shortMeaning(record.meaning);
@@ -175,7 +198,9 @@ const words = records
       band: band.key,
       bandLabel: band.label,
       bandColor: band.color,
-      exams: examTags.get(record.word) || []
+      exams: examTags.get(record.word) || [],
+      textbooks: textbookMembership.get(record.word)?.books || [],
+      textbookUnits: textbookMembership.get(record.word)?.units || []
     };
   });
 
@@ -185,6 +210,11 @@ if (words.length < 10000) {
 for (const key of Object.keys(EXAM_SOURCES)) {
   if (!words.some(word => word.exams.includes(key))) {
     throw new Error(`考试分类缺少词条：${key}`);
+  }
+}
+for (const key of Object.keys(TEXTBOOK_SOURCES)) {
+  if (!words.some(word => word.textbooks.includes(key))) {
+    throw new Error(`教材分类缺少词条：${key}`);
   }
 }
 
@@ -198,11 +228,16 @@ const payload = {
     exams: {
       repository: 'https://github.com/KyleBing/english-vocabulary',
       license: 'BSD-3-Clause'
+    },
+    textbooks: {
+      repository: 'https://github.com/ackuikui/english-study',
+      note: 'Only word forms and book/unit membership are used; definitions remain in the existing vocabulary sources.'
     }
   },
   exams: Object.fromEntries(
     Object.entries(EXAM_SOURCES).map(([key, value]) => [key, value.label])
   ),
+  textbooks: TEXTBOOK_SOURCES,
   bands: {
     foundation: { label: '基础高频', range: '1–800', color: '#5eead4' },
     everyday: { label: '日常核心', range: '801–2000', color: '#60a5fa' },
