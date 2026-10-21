@@ -5,12 +5,16 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const releaseFile = path.join(root, 'release/English-Forge-英语锻造所.html');
 const html = fs.readFileSync(releaseFile, 'utf8');
+const offlineHtml = fs.readFileSync(path.join(root, 'offline.html'), 'utf8');
 const browserErrors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on('jsdomError', error => browserErrors.push(error));
 
 if (!html.includes('window.ENGLISH_VOCAB') || !html.includes('window.ENGLISH_CURRICULUM')) {
   throw new Error('单文件版缺少词库或课程数据');
+}
+if (!offlineHtml.includes('window.ENGLISH_VOCAB') || !offlineHtml.includes('window.ENGLISH_CURRICULUM')) {
+  throw new Error('公网单文件备用版缺少词库或课程数据');
 }
 if (/<script[^>]+src=|<link[^>]+stylesheet/.test(html)) {
   throw new Error('单文件版仍包含外部脚本或样式依赖');

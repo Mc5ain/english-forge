@@ -4,6 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const releaseDir = path.join(root, 'release');
 const outputFile = path.join(releaseDir, 'English-Forge-英语锻造所.html');
+const shareFile = path.join(root, 'offline.html');
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -83,7 +84,8 @@ html = html.replace('<!doctype html>', `<!doctype html>\n<!--\n${licenseNotice}\
 
 fs.mkdirSync(releaseDir, { recursive: true });
 fs.writeFileSync(outputFile, html);
+fs.writeFileSync(shareFile, html);
 
 console.log(
-  `Generated ${path.relative(root, outputFile)}: ${(Buffer.byteLength(html) / 1024 / 1024).toFixed(2)} MB`
+  `Generated ${path.relative(root, outputFile)} and offline.html: ${(Buffer.byteLength(html) / 1024 / 1024).toFixed(2)} MB`
 );

@@ -71,7 +71,14 @@
           <span class="live-pill"><i></i> LOCAL-FIRST</span>
         </div>
       </header>
-      <main id="app" class="app-main"></main>
+      <main id="app" class="app-main">
+        <section id="ef-boot-status" class="panel panel-pad" style="margin:40px auto;max-width:620px;text-align:center">
+          <span class="eyebrow">LOADING</span>
+          <h2 style="margin:10px 0;font-family:var(--font-display);font-size:30px">正在加载 English Forge</h2>
+          <p style="color:var(--muted);line-height:1.7">首次打开需要下载词库。网络较慢时请稍等，页面会自动切换备用线路。</p>
+          <a class="secondary-button" href="offline.html">如果一直打不开，使用单文件版</a>
+        </section>
+      </main>
     </div>
   </div>
 
@@ -167,5 +174,42 @@
   <script src="assets/vocabulary.js"></script>
   <script src="data/curriculum.js"></script>
   <script src="app.js"></script>
+  <script>
+    (() => {
+      const cdn = 'https://cdn.jsdelivr.net/gh/Mc5ain/english-forge@main/';
+      const load = src => new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+      const showFailure = () => {
+        const status = document.querySelector('#ef-boot-status');
+        if (!status) return;
+        status.innerHTML = `
+          <span class="eyebrow">CONNECTION ISSUE</span>
+          <h2 style="margin:10px 0;font-family:var(--font-display);font-size:30px">词库没有加载完成</h2>
+          <p style="color:var(--muted);line-height:1.7">请检查网络后重试，或直接使用单文件版。</p>
+          <div class="button-row" style="justify-content:center;margin-top:18px">
+            <button class="primary-button" onclick="location.reload()">重新加载</button>
+            <a class="secondary-button" href="offline.html">打开单文件版</a>
+          </div>
+        `;
+      };
+      (async () => {
+        try {
+          if (!window.ENGLISH_VOCAB) await load(`${cdn}assets/vocabulary.js?v=16`);
+          if (!window.ENGLISH_CURRICULUM) await load(`${cdn}data/curriculum.js?v=16`);
+          if (!window.__ENGLISH_FORGE_BOOTED__) await load(`${cdn}app.js?v=16`);
+        } catch {
+          showFailure();
+        }
+      })();
+      setTimeout(() => {
+        if (document.querySelector('#ef-boot-status')) showFailure();
+      }, 18000);
+    })();
+  </script>
 </body>
 </html>

@@ -1,7 +1,8 @@
 (() => {
   const VOCAB = window.ENGLISH_VOCAB;
-  const WORDS = VOCAB.words;
   const CURRICULUM = window.ENGLISH_CURRICULUM;
+  if (!VOCAB || !CURRICULUM) return;
+  const WORDS = VOCAB.words;
   const WORD_MAP = new Map(WORDS.map(word => [word.id, word]));
   const BY_WORD = new Map(WORDS.map(word => [word.word.toLowerCase(), word]));
   const STORAGE_KEY = 'english_forge_state_v1';
@@ -3136,4 +3137,5 @@
   applyTheme(theme, false);
   updateChrome();
   render();
+  window.__ENGLISH_FORGE_BOOTED__ = true;
 })();
