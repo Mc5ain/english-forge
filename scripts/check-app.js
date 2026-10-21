@@ -61,6 +61,7 @@ check(
   '侧栏应显示完整词库数量'
 );
 check(app().includes('PERSONAL COACH') && app().includes('完成一轮主动提取'), '首页应给出个性化训练建议');
+check(!document.querySelector('#app').hasAttribute('aria-live'), '主内容区不应在每次重渲染时朗读整页');
 
 click(window, '[data-coach-primary]');
 check(app().includes('RETRIEVE THE MEANING'), '主动回忆训练应显示英文提示');
@@ -208,6 +209,9 @@ const search = document.querySelector('#dictionary-search');
 search.value = 'student';
 search.dispatchEvent(new window.Event('input', { bubbles: true }));
 check(app().includes('student'), '词典搜索应返回 student');
+search.value = '学生';
+search.dispatchEvent(new window.Event('input', { bubbles: true }));
+check(app().includes('student'), '词典应支持中文释义搜索');
 const dictionaryExam = document.querySelector('#dictionary-exam');
 check(dictionaryExam && dictionaryExam.options.length >= 8, '词典应支持按考试分类筛选');
 const dictionaryTextbook = document.querySelector('#dictionary-textbook');

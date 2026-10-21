@@ -9,6 +9,7 @@ function check(condition, message) {
 }
 
 (async () => {
+  let stoppedTracks = 0;
   const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
     url: 'http://localhost/#speaking',
     runScripts: 'outside-only',
@@ -47,7 +48,7 @@ function check(condition, message) {
     configurable: true,
     value: {
       getUserMedia: async () => ({
-        getTracks: () => [{ stop() {} }]
+        getTracks: () => [{ stop() { stoppedTracks += 1; } }]
       })
     }
   });
@@ -66,8 +67,16 @@ function check(condition, message) {
   await new Promise(resolve => setTimeout(resolve, 0));
   check(Boolean(window.document.querySelector('.recording-playback audio')), '停止录音后应显示可播放音频');
   check(app().includes('录音已保存'), '没有语音识别时应保留录音并显示回放说明');
+  button().dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  window.document.querySelector('[data-nav="home"]').dispatchEvent(
+    new window.MouseEvent('click', { bubbles: true, cancelable: true })
+  );
+  await new Promise(resolve => setTimeout(resolve, 0));
+  check(stoppedTracks >= 2, '离开口语页时应关闭麦克风');
+  check(app().includes('今天，让英语'), '离开口语页后应正常返回首页');
 
-  console.log('Recording check passed: microphone capture, stop state and local playback.');
+  console.log('Recording check passed: microphone capture, stop state, local playback and navigation cleanup.');
 })().catch(error => {
   console.error(error.message);
   process.exit(1);

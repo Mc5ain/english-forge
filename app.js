@@ -147,6 +147,8 @@
   let speakingAudioUrl = '';
   let speakingRecording = false;
   let speakingStarting = false;
+  let speakingDiscard = false;
+  let speakingRecordingIndex = 0;
   let speakingStartedAt = 0;
   let speakingResult = null;
   let readingState = null;
@@ -185,6 +187,15 @@
 
   function normalize(value) {
     return String(value || '').toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeSearch(value) {
+    return String(value || '')
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}'\s]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function clamp(value, min, max) {
@@ -709,6 +720,10 @@
   }
 
   function setView(view, syncHash = true) {
+    if (currentView === 'speaking' && view !== 'speaking' && speakingRecording) {
+      speakingDiscard = true;
+      stopSpeakingCapture();
+    }
     if (!VIEWS.includes(view)) view = 'home';
     currentView = view;
     readingState = null;
@@ -1275,9 +1290,20 @@
         candidate.meaning !== word.meaning
       );
       const options = [word.id];
-      while (options.length < 4 && pool.length) {
+      const seenDefinitions = new Set([primaryDefinition(word).toLowerCase()]);
+      let attempts = 0;
+      while (options.length < 4 && pool.length && attempts < pool.length * 2) {
+        attempts += 1;
         const pick = pool[Math.floor(Math.random() * pool.length)];
-        if (!options.includes(pick.id)) options.push(pick.id);
+        const definition = primaryDefinition(pick).toLowerCase();
+        if (!options.includes(pick.id) && !seenDefinitions.has(definition)) {
+          options.push(pick.id);
+          seenDefinitions.add(definition);
+        }
+      }
+      for (const candidate of pool) {
+        if (options.length >= 4) break;
+        if (!options.includes(candidate.id)) options.push(candidate.id);
       }
       options.sort(() => Math.random() - 0.5);
       wordSession.choiceWordId = word.id;
@@ -1877,6 +1903,8 @@
     }
     cleanupSpeakingAudio();
     speakingResult = null;
+    speakingDiscard = false;
+    speakingRecordingIndex = speakingIndex;
     speakingChunks = [];
     speakingTranscript = '';
     speakingStartedAt = Date.now();
@@ -1907,6 +1935,18 @@
       };
       speakingMediaRecorder.onstop = () => {
         const duration = Math.max(1, Math.round((Date.now() - speakingStartedAt) / 1000));
+        if (speakingDiscard) {
+          speakingRecording = false;
+          speakingStarting = false;
+          speakingMediaRecorder = null;
+          speakingDiscard = false;
+          if (speakingStream) {
+            speakingStream.getTracks().forEach(track => track.stop());
+            speakingStream = null;
+          }
+          if (currentView === 'speaking') renderSpeaking();
+          return;
+        }
         const blob = new Blob(speakingChunks, {
           type: speakingMediaRecorder.mimeType || speakingChunks[0]?.type || 'audio/mp4'
         });
@@ -1942,7 +1982,7 @@
           speakingStream.getTracks().forEach(track => track.stop());
           speakingStream = null;
         }
-        markActivity('speak', speakingIndex);
+        markActivity('speak', speakingRecordingIndex);
         renderSpeaking();
       };
       speakingRecording = true;
@@ -1968,7 +2008,10 @@
   }
 
   function moveSpeaking(delta) {
-    if (speakingRecording) stopSpeakingCapture();
+    if (speakingRecording) {
+      speakingDiscard = true;
+      stopSpeakingCapture();
+    }
     cleanupSpeakingAudio();
     speakingIndex = (speakingIndex + delta + CURRICULUM.speaking.length) % CURRICULUM.speaking.length;
     speakingResult = null;
@@ -2288,7 +2331,7 @@
   }
 
   function filteredDictionaryWords() {
-    const query = normalize(dictionaryState.query);
+    const query = normalizeSearch(dictionaryState.query);
     return WORDS.filter(word => {
       if (dictionaryState.band !== 'all' && word.band !== dictionaryState.band) return false;
       if (dictionaryState.exam === 'none' && word.exams.length) return false;
@@ -2296,7 +2339,7 @@
       if (dictionaryState.textbook === 'none' && word.textbooks.length) return false;
       if (dictionaryState.textbook !== 'all' && dictionaryState.textbook !== 'none' && !word.textbooks.includes(dictionaryState.textbook)) return false;
       if (!query) return true;
-      return normalize(word.word).includes(query) || normalize(word.meaning).includes(query);
+      return normalizeSearch(word.word).includes(query) || normalizeSearch(word.meaning).includes(query);
     });
   }
 
@@ -3018,6 +3061,10 @@
       stateCacheDate = '';
       render();
     }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (speakingStream) speakingStream.getTracks().forEach(track => track.stop());
   });
 
   document.querySelectorAll('[data-nav]').forEach(button => button.setAttribute('type', 'button'));
