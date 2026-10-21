@@ -48,6 +48,13 @@ for (const exam of ['junior', 'high', 'cet4', 'cet6', 'kaoyan', 'toefl', 'sat'])
 }
 for (const textbook of ['xln1', 'xln2', 'xln3', 'xln4']) {
   check(words.some(word => word.textbooks.includes(textbook)), `教材分类为空：${textbook}`);
+  check(data.textbookUnitCounts[textbook] >= 10, `教材单元数异常：${textbook}`);
+  for (let unit = 1; unit <= data.textbookUnitCounts[textbook]; unit += 1) {
+    check(
+      words.some(word => word.textbookUnits.includes(`${textbook}-u${unit}`)),
+      `教材单元为空：${textbook} Unit ${unit}`
+    );
+  }
 }
 check(curriculum.grammar.length >= 24, '语法课程少于 24 节');
 check(curriculum.reading.length >= 10, '分级阅读少于 10 篇');

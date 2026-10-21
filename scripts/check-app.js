@@ -108,6 +108,11 @@ check(document.querySelectorAll('.textbook-overview-grid .exam-overview-card').l
 click(window, '[data-vocab-textbook="xln1"]');
 check(JSON.parse(window.localStorage.getItem('english_forge_profile_v1')).textbook === 'xln1', '新视野册别筛选应持久化');
 check(document.querySelector('[data-vocab-textbook="xln1"]').classList.contains('active'), '当前教材分类应高亮');
+check(document.querySelectorAll('[data-vocab-unit]').length === 11, '选择新视野第 1 册后应显示 10 个单元筛选');
+click(window, '[data-vocab-unit="1"]');
+const unitFilterProfile = JSON.parse(window.localStorage.getItem('english_forge_profile_v1'));
+check(unitFilterProfile.textbookUnit === '1', '新视野单元筛选应持久化');
+click(window, '[data-vocab-unit="all"]');
 click(window, '[data-vocab-textbook="all"]');
 click(window, '[data-vocab-exam="cet6"]');
 const examFilterProfile = JSON.parse(window.localStorage.getItem('english_forge_profile_v1'));

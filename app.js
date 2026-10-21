@@ -46,6 +46,7 @@
     ...Object.entries(VOCAB.textbooks || {}).map(([key, label]) => ({ key, label })),
     { key: 'none', label: '未收录' }
   ];
+  const TEXTBOOK_UNIT_COUNTS = VOCAB.textbookUnitCounts || { xln1: 10, xln2: 10, xln3: 10, xln4: 10 };
   const STATUS_FILTERS = [
     { key: 'all', label: '全部' },
     { key: 'new', label: '未学习' },
@@ -65,6 +66,7 @@
     band: 'all',
     exam: 'all',
     textbook: 'all',
+    textbookUnit: 'all',
     pos: 'all',
     status: 'all',
     accent: 'en-US',
@@ -87,6 +89,13 @@
         textbook: value && TEXTBOOK_FILTERS.some(item => item.key === value.textbook)
           ? value.textbook
           : defaultProfile.textbook,
+        textbookUnit: value &&
+          (value.textbookUnit === 'all' ||
+            (Number.isInteger(Number(value.textbookUnit)) &&
+              Number(value.textbookUnit) >= 1 &&
+              Number(value.textbookUnit) <= TEXTBOOK_UNIT_COUNTS[value.textbook]))
+          ? String(value.textbookUnit)
+          : defaultProfile.textbookUnit,
         pos: value && POS_FILTERS.some(item => item.key === value.pos)
           ? value.pos
           : defaultProfile.pos,
@@ -442,6 +451,8 @@
       if (profile.exam !== 'all' && profile.exam !== 'none' && !word.exams.includes(profile.exam)) return false;
       if (profile.textbook === 'none' && word.textbooks.length) return false;
       if (profile.textbook !== 'all' && profile.textbook !== 'none' && !word.textbooks.includes(profile.textbook)) return false;
+      if (profile.textbookUnit !== 'all' &&
+          !word.textbookUnits.includes(`${profile.textbook}-u${profile.textbookUnit}`)) return false;
       if (!matchesPartOfSpeech(word, profile.pos)) return false;
       return matchesLearningStatus(word, profile.status, state);
     });
@@ -497,9 +508,13 @@
           (value === 'none' ? !word.textbooks.length : word.textbooks.includes(value))
         : profile.textbook === 'all' ||
           (profile.textbook === 'none' ? !word.textbooks.length : word.textbooks.includes(profile.textbook));
+      const unitMatch = type === 'unit'
+        ? value === 'all' || word.textbookUnits.includes(`${profile.textbook}-u${value}`)
+        : profile.textbookUnit === 'all' ||
+          word.textbookUnits.includes(`${profile.textbook}-u${profile.textbookUnit}`);
       const posMatch = matchesPartOfSpeech(word, type === 'pos' ? value : profile.pos);
       const statusMatch = matchesLearningStatus(word, type === 'status' ? value : profile.status, state);
-      return bandMatch && examMatch && textbookMatch && posMatch && statusMatch;
+      return bandMatch && examMatch && textbookMatch && unitMatch && posMatch && statusMatch;
     }).length;
   }
 
@@ -508,7 +523,13 @@
     const textbookKeys = (word.textbooks || []).filter(key => VOCAB.textbooks[key]);
     const tags = [
       ...examKeys.map(key => ({ label: VOCAB.exams[key], type: 'exam' })),
-      ...textbookKeys.map(key => ({ label: VOCAB.textbooks[key], type: 'textbook' }))
+      ...textbookKeys.map(key => {
+        const units = word.textbookUnits
+          .filter(unit => unit.startsWith(`${key}-u`))
+          .map(unit => unit.split('-u')[1]);
+        const unitLabel = units.length === 1 ? ` · U${units[0]}` : units.length > 1 ? ` · ${units.length} units` : '';
+        return { label: `${VOCAB.textbooks[key]}${unitLabel}`, type: 'textbook' };
+      })
     ];
     if (!tags.length) return '';
     const visible = tags.slice(0, 5);
@@ -1113,6 +1134,7 @@
     const newInBand = filteredWords.filter(word => !state.records[word.id]).length;
     const favorites = Object.keys(state.favorites).length;
     const canTrain = filteredCount > 0;
+    const unitCount = Number(TEXTBOOK_UNIT_COUNTS[profile.textbook] || 0);
     app.innerHTML = `
       <section class="view">
         <div class="page-intro">
@@ -1143,6 +1165,15 @@
               <small class="filter-note">新视野按第 1–4 册导入，只使用英文词形与册/单元归属</small>
             </div>
           </div>
+          ${unitCount ? `
+            <div class="filter-group">
+              <span>单元</span>
+              <div class="filter-chips">
+                <button class="${profile.textbookUnit === 'all' ? 'active' : ''}" data-vocab-unit="all">全部单元 <small>${countWordsForFilter('unit', 'all')}</small></button>
+                ${Array.from({ length: unitCount }, (_, index) => index + 1).map(unit => `<button class="${profile.textbookUnit === String(unit) ? 'active' : ''}" data-vocab-unit="${unit}">U${unit} <small>${countWordsForFilter('unit', String(unit))}</small></button>`).join('')}
+              </div>
+            </div>
+          ` : ''}
           <div class="filter-group">
             <span>词频</span>
             <div class="filter-chips">
@@ -2558,6 +2589,15 @@
     } else if (type === 'textbook') {
       if (!TEXTBOOK_FILTERS.some(item => item.key === value)) return;
       profile.textbook = value;
+      profile.textbookUnit = 'all';
+    } else if (type === 'unit') {
+      const unit = value === 'all' ? 'all' : String(Number(value));
+      const maxUnit = Number(TEXTBOOK_UNIT_COUNTS[profile.textbook] || 0);
+      if (unit !== 'all' &&
+          (!Number.isInteger(Number(unit)) || Number(unit) < 1 || Number(unit) > maxUnit)) {
+        return;
+      }
+      profile.textbookUnit = unit;
     } else if (type === 'pos') {
       if (!POS_FILTERS.some(item => item.key === value)) return;
       profile.pos = value;
@@ -2695,6 +2735,12 @@
             textbook: TEXTBOOK_FILTERS.some(item => item.key === payload.profile.textbook)
               ? payload.profile.textbook
               : profile.textbook,
+            textbookUnit: payload.profile.textbookUnit === 'all' ||
+              (Number.isInteger(Number(payload.profile.textbookUnit)) &&
+                Number(payload.profile.textbookUnit) >= 1 &&
+                Number(payload.profile.textbookUnit) <= TEXTBOOK_UNIT_COUNTS[payload.profile.textbook])
+              ? String(payload.profile.textbookUnit)
+              : 'all',
             pos: POS_FILTERS.some(item => item.key === payload.profile.pos)
               ? payload.profile.pos
               : profile.pos,
@@ -2770,6 +2816,11 @@
     const vocabTextbook = event.target.closest('[data-vocab-textbook]');
     if (vocabTextbook) {
       setVocabClassification('textbook', vocabTextbook.dataset.vocabTextbook);
+      return;
+    }
+    const vocabUnit = event.target.closest('[data-vocab-unit]');
+    if (vocabUnit) {
+      setVocabClassification('unit', vocabUnit.dataset.vocabUnit);
       return;
     }
     const vocabPos = event.target.closest('[data-vocab-pos]');

@@ -150,6 +150,15 @@ function loadTextbookMembership() {
 
 const examTags = loadExamTags();
 const textbookMembership = loadTextbookMembership();
+const textbookUnitCounts = Object.fromEntries(Object.keys(TEXTBOOK_SOURCES).map(key => [key, 0]));
+for (const entry of textbookMembership.values()) {
+  for (const unit of entry.units) {
+    const match = unit.match(/^(xln[1-4])-u(\d+)$/);
+    if (match) {
+      textbookUnitCounts[match[1]] = Math.max(textbookUnitCounts[match[1]], Number(match[2]));
+    }
+  }
+}
 
 for (const rawLine of lines) {
   const line = rawLine.trim();
@@ -238,6 +247,7 @@ const payload = {
     Object.entries(EXAM_SOURCES).map(([key, value]) => [key, value.label])
   ),
   textbooks: TEXTBOOK_SOURCES,
+  textbookUnitCounts,
   bands: {
     foundation: { label: '基础高频', range: '1–800', color: '#5eead4' },
     everyday: { label: '日常核心', range: '801–2000', color: '#60a5fa' },
