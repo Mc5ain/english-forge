@@ -5,7 +5,7 @@
   "description": "离线优先的英语词汇、听力、口语、阅读与语法训练站",
   "scripts": {
     "build": "node scripts/build-data.js",
-    "test": "node scripts/check-data.js && node scripts/check-app.js",
+    "test": "node scripts/check-data.js && node scripts/check-app.js && node scripts/check-recording.js",
     "release": "node scripts/build-release.js",
     "check": "npm run build && npm test && npm run release && node scripts/check-release.js",
     "serve": "python3 -m http.server 4174"

@@ -130,7 +130,13 @@
   let listeningFeedback = null;
   let speakingIndex = 0;
   let speakingRecognition = null;
+  let speakingMediaRecorder = null;
+  let speakingStream = null;
+  let speakingChunks = [];
+  let speakingTranscript = '';
+  let speakingAudioUrl = '';
   let speakingRecording = false;
+  let speakingStarting = false;
   let speakingStartedAt = 0;
   let speakingResult = null;
   let readingState = null;
@@ -1680,14 +1686,19 @@
 
   function renderSpeaking() {
     const item = CURRICULUM.speaking[speakingIndex];
-    const supported = Boolean(speechRecognitionClass());
+    const recordingSupported = Boolean(
+      navigator.mediaDevices &&
+      navigator.mediaDevices.getUserMedia &&
+      window.MediaRecorder
+    );
+    const recognitionSupported = Boolean(speechRecognitionClass());
     app.innerHTML = `
       <section class="view">
         <div class="page-intro">
           <div>
             <span class="eyebrow">SPEAKING LAB</span>
             <h1>不追求完美口音，先做到信息完整。</h1>
-            <p>按提示连续说 30–60 秒。浏览器只在本地识别你的声音；评分是流利度参考，不是专业口语分数。</p>
+            <p>按提示连续说 30–60 秒。录音保存在当前设备，可立即回放；浏览器支持时会附带自动转写。</p>
           </div>
           <span class="live-pill"><i></i> ${CURRICULUM.speaking.length} PROMPTS</span>
         </div>
@@ -1699,12 +1710,23 @@
             <div class="speaking-frame">${escapeHtml(item.frame)}</div>
             <div class="button-row">
               <button class="record-button${speakingRecording ? ' recording' : ''}" data-action="record-speaking">
-                <span>${speakingRecording ? '■' : '●'}</span>${speakingRecording ? '停止录音' : supported ? '开始说' : '当前浏览器不支持语音识别'}
+                <span>${speakingRecording ? '■' : '●'}</span>${speakingStarting ? '正在请求麦克风…' : speakingRecording ? '停止录音' : recordingSupported ? '开始录音' : '当前浏览器不支持录音'}
               </button>
               <button class="secondary-button" data-action="speak" data-speak="${escapeHtml(item.prompt)}">🔊 听题目</button>
             </div>
             ${speakingResult ? `
-              <div class="transcript-box">${escapeHtml(speakingResult.transcript || '没有识别到清晰语音。换一个安静环境，靠近麦克风再试。')}</div>
+              ${speakingAudioUrl ? `
+                <div class="recording-playback">
+                  <span>回放你的录音 · ${speakingResult.duration || 1} 秒</span>
+                  <audio controls preload="metadata" src="${speakingAudioUrl}"></audio>
+                </div>
+              ` : ''}
+              ${speakingResult.transcript ? `
+                <div class="transcript-box">${escapeHtml(speakingResult.transcript)}</div>
+              ` : `
+                <div class="recording-note">录音已保存，但当前浏览器没有提供自动转写。请回放录音，重点检查停顿、重音和句尾是否完整。</div>
+              `}
+              ${speakingResult.words ? `
               <div class="metric-grid">
                 <div class="metric"><strong>${speakingResult.words}</strong><span>识别词数</span></div>
                 <div class="metric"><strong>${speakingResult.wpm}</strong><span>词 / 分钟</span></div>
@@ -1714,6 +1736,7 @@
                 <strong>${speakingResult.feedback}</strong>
                 这里评估的是“是否持续输出、句子是否成形”，不能替代人工发音纠音。
               </div>
+              ` : `<div class="feedback"><strong>${speakingResult.feedback}</strong>自动评分需要浏览器语音识别，当前录音功能仍可正常使用。</div>`}
             ` : ''}
           </div>
           <div class="listen-side">
@@ -1737,67 +1760,152 @@
     `;
   }
 
-  function startSpeakingRecognition() {
-    const Recognition = speechRecognitionClass();
-    if (!Recognition) {
-      showToast('请使用 Safari 最新版或 Chrome 体验语音识别');
-      return;
-    }
-    if (speakingRecording) {
-      if (speakingRecognition) speakingRecognition.stop();
-      return;
-    }
-    speakingResult = null;
-    speakingStartedAt = Date.now();
-    speakingRecording = true;
-    const recognition = new Recognition();
-    speakingRecognition = recognition;
-    recognition.lang = profile.accent;
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    let transcript = '';
-    recognition.onresult = event => {
-      transcript = Array.from(event.results).map(result => result[0].transcript).join(' ');
-    };
-    recognition.onerror = event => {
-      speakingRecording = false;
-      if (event.error !== 'no-speech') showToast(`语音识别未完成：${event.error}`);
-      renderSpeaking();
-    };
-    recognition.onend = () => {
-      speakingRecording = false;
-      const seconds = Math.max(1, (Date.now() - speakingStartedAt) / 1000);
-      const words = normalize(transcript).split(' ').filter(Boolean).length;
-      const wpm = words ? Math.round((words / seconds) * 60) : 0;
-      const score = clamp(Math.round(
-        Math.min(1, words / 30) * 55 +
-        Math.min(1, seconds / 20) * 20 +
-        (words >= 8 ? 15 : 5)
-      ), 0, 95);
-      speakingResult = {
-        transcript: transcript.trim(),
-        words,
-        wpm,
-        score,
-        feedback: words >= 30
-          ? '输出长度不错，信息量足够。下一步注意少用填充词，让句子更集中。'
-          : words >= 12
-            ? '已经形成连续表达。下一轮尝试多给一个原因或例子。'
-            : '输出偏短。先用提示框架补成 3–4 句，不要只回答一个词。'
-      };
-      markActivity('speak', speakingIndex);
-      renderSpeaking();
-    };
+  function cleanupSpeakingAudio() {
+    if (speakingAudioUrl) URL.revokeObjectURL(speakingAudioUrl);
+    speakingAudioUrl = '';
+  }
+
+  function stopSpeakingCapture() {
     try {
+      if (speakingMediaRecorder && speakingMediaRecorder.state !== 'inactive') {
+        speakingMediaRecorder.stop();
+      }
+    } catch {}
+    try {
+      if (speakingRecognition) speakingRecognition.stop();
+    } catch {}
+  }
+
+  function startOptionalRecognition() {
+    const Recognition = speechRecognitionClass();
+    if (!Recognition) return;
+    try {
+      const recognition = new Recognition();
+      speakingRecognition = recognition;
+      recognition.lang = profile.accent;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.onresult = event => {
+        speakingTranscript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join(' ')
+          .trim();
+      };
+      recognition.onerror = () => {};
+      recognition.onend = () => {
+        speakingRecognition = null;
+      };
       recognition.start();
-      renderSpeaking();
     } catch {
+      speakingRecognition = null;
+    }
+  }
+
+  async function toggleSpeakingRecording() {
+    if (speakingStarting) return;
+    if (speakingRecording) {
+      stopSpeakingCapture();
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+      showToast('当前浏览器不支持网页录音，请更新 Safari 或 Chrome');
+      return;
+    }
+    cleanupSpeakingAudio();
+    speakingResult = null;
+    speakingChunks = [];
+    speakingTranscript = '';
+    speakingStartedAt = Date.now();
+    speakingStarting = true;
+    renderSpeaking();
+    try {
+      speakingStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      const mimeTypes = [
+        'audio/mp4',
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus'
+      ];
+      const mimeType = mimeTypes.find(type =>
+        !window.MediaRecorder.isTypeSupported || window.MediaRecorder.isTypeSupported(type)
+      );
+      speakingMediaRecorder = mimeType
+        ? new window.MediaRecorder(speakingStream, { mimeType })
+        : new window.MediaRecorder(speakingStream);
+      speakingMediaRecorder.ondataavailable = event => {
+        if (event.data && event.data.size > 0) speakingChunks.push(event.data);
+      };
+      speakingMediaRecorder.onstop = () => {
+        const duration = Math.max(1, Math.round((Date.now() - speakingStartedAt) / 1000));
+        const blob = new Blob(speakingChunks, {
+          type: speakingMediaRecorder.mimeType || speakingChunks[0]?.type || 'audio/mp4'
+        });
+        speakingAudioUrl = blob.size ? URL.createObjectURL(blob) : '';
+        const transcript = speakingTranscript.trim();
+        const words = normalize(transcript).split(' ').filter(Boolean).length;
+        const wpm = words ? Math.round((words / duration) * 60) : 0;
+        const score = words
+          ? clamp(Math.round(
+              Math.min(1, words / 30) * 55 +
+              Math.min(1, duration / 20) * 20 +
+              (words >= 8 ? 15 : 5)
+            ), 0, 95)
+          : 0;
+        speakingResult = {
+          transcript,
+          duration,
+          words,
+          wpm,
+          score,
+          feedback: transcript
+            ? words >= 30
+              ? '输出长度不错，信息量足够。下一步注意少用填充词，让句子更集中。'
+              : words >= 12
+                ? '已经形成连续表达。下一轮尝试多给一个原因或例子。'
+                : '输出偏短。先用提示框架补成 3–4 句，不要只回答一个词。'
+            : '录音完成。回放时先听句子是否连续，再检查重音和词尾。'
+        };
+        speakingRecording = false;
+        speakingStarting = false;
+        speakingMediaRecorder = null;
+        if (speakingStream) {
+          speakingStream.getTracks().forEach(track => track.stop());
+          speakingStream = null;
+        }
+        markActivity('speak', speakingIndex);
+        renderSpeaking();
+      };
+      speakingRecording = true;
+      speakingStarting = false;
+      speakingMediaRecorder.start();
+      startOptionalRecognition();
+      renderSpeaking();
+    } catch (error) {
       speakingRecording = false;
-      showToast('无法启动麦克风，请检查浏览器权限');
+      speakingStarting = false;
+      if (speakingStream) {
+        speakingStream.getTracks().forEach(track => track.stop());
+        speakingStream = null;
+      }
+      const message = error && error.name === 'NotAllowedError'
+        ? '麦克风权限被拒绝，请在浏览器设置中允许访问麦克风'
+        : error && error.name === 'NotFoundError'
+          ? '没有检测到可用麦克风'
+          : '无法启动录音，请检查麦克风权限';
+      showToast(message);
+      renderSpeaking();
     }
   }
 
   function moveSpeaking(delta) {
+    if (speakingRecording) stopSpeakingCapture();
+    cleanupSpeakingAudio();
     speakingIndex = (speakingIndex + delta + CURRICULUM.speaking.length) % CURRICULUM.speaking.length;
     speakingResult = null;
     renderSpeaking();
@@ -2617,7 +2725,7 @@
       return;
     }
     if (event.target.closest('[data-action="record-speaking"]')) {
-      startSpeakingRecognition();
+      toggleSpeakingRecording();
       return;
     }
     if (event.target.closest('[data-speaking-prev]')) {
