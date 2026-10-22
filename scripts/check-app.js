@@ -16,6 +16,27 @@ function createApp(hash = '#home') {
   });
   const { window } = dom;
   window.scrollTo = () => {};
+  const spoken = [];
+  window.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
+    constructor(text) {
+      this.text = text;
+      this.lang = '';
+      this.rate = 1;
+      this.pitch = 1;
+      this.volume = 1;
+      this.voice = null;
+      this.onerror = null;
+    }
+  };
+  Object.defineProperty(window, 'speechSynthesis', {
+    configurable: true,
+    value: {
+      cancel: () => {},
+      resume: () => {},
+      speak: utterance => spoken.push(utterance),
+      getVoices: () => [{ lang: 'en-US', name: 'English Test Voice' }]
+    }
+  });
   window.HTMLDialogElement.prototype.showModal = function showModal() {
     this.open = true;
   };
@@ -25,7 +46,7 @@ function createApp(hash = '#home') {
   window.eval(vocabulary);
   window.eval(curriculum);
   window.eval(appSource);
-  return { dom, window, document: window.document };
+  return { dom, window, document: window.document, spoken };
 }
 
 function click(window, selector) {
@@ -51,7 +72,7 @@ function check(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const { window, document } = createApp();
+const { window, document, spoken } = createApp();
 const app = () => document.querySelector('#app').innerHTML;
 
 check(app().includes('今天，让英语'), '首页应完成渲染');
@@ -65,6 +86,11 @@ check(!document.querySelector('#app').hasAttribute('aria-live'), '主内容区�
 
 click(window, '[data-coach-primary]');
 check(app().includes('RETRIEVE THE MEANING'), '主动回忆训练应显示英文提示');
+check(spoken.length === 1, '进入训练后应自动朗读当前单词');
+check(
+  spoken[0].text === document.querySelector('.word-card-word').textContent.trim(),
+  '自动朗读应与当前单词一致'
+);
 check(document.querySelector('[data-nav="vocab"]').classList.contains('active'), '从教练入口进入训练后词汇导航应同步高亮');
 check(window.location.hash === '#vocab', '从教练入口进入训练后地址应同步');
 keydown(window, ' ');
@@ -262,5 +288,13 @@ click(window, '[data-theme-option="light"]');
 check(document.documentElement.dataset.theme === 'light', '浅色主题应立即应用');
 check(window.localStorage.getItem('english_forge_theme') === 'light', '主题设置应持久化');
 click(window, '[data-theme-option="dark"]');
+click(window, '[data-auto-speak="false"]');
+const autoSpeakProfile = JSON.parse(window.localStorage.getItem('english_forge_profile_v1'));
+check(autoSpeakProfile.autoSpeak === false, '切词自动朗读设置应持久化');
+const spokenBeforeDisabledStart = spoken.length;
+click(window, '[data-close-settings]');
+click(window, '[data-nav="vocab"]');
+click(window, '[data-start-word="recall"]');
+check(spoken.length === spokenBeforeDisabledStart, '关闭自动朗读后进入新单词不应发声');
 
-console.log('App interaction check passed: coach recommendations, classified vocabulary, six training modes, SRS review, favorite flow, dictation scoring, morphology lookup, mistake replay, dictionary search and settings.');
+console.log('App interaction check passed: coach recommendations, classified vocabulary, six training modes, automatic pronunciation, SRS review, favorite flow, dictation scoring, morphology lookup, mistake replay, dictionary search and settings.');

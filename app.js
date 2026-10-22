@@ -71,7 +71,8 @@
     pos: 'all',
     status: 'all',
     accent: 'en-US',
-    rate: 0.9
+    rate: 0.9,
+    autoSpeak: true
   };
 
   function readProfile() {
@@ -108,7 +109,10 @@
           : defaultProfile.accent,
         rate: value && [0.72, 0.9, 1.08].includes(Number(value.rate))
           ? Number(value.rate)
-          : defaultProfile.rate
+          : defaultProfile.rate,
+        autoSpeak: typeof (value && value.autoSpeak) === 'boolean'
+          ? value.autoSpeak
+          : defaultProfile.autoSpeak
       };
     } catch {
       return { ...defaultProfile };
@@ -163,6 +167,7 @@
   let speakingResult = null;
   let readingState = null;
   let lessonState = null;
+  let lastAutoSpeechKey = '';
   const dictionaryState = { query: '', band: 'all', exam: 'all', textbook: 'all', limit: 60 };
 
   function dateKey(date = new Date()) {
@@ -707,20 +712,51 @@
     return active;
   }
 
+  function speechVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    const accent = profile.accent.replace('_', '-').toLowerCase();
+    const language = accent.slice(0, 2);
+    return voices.find(item => item.lang.replace('_', '-').toLowerCase() === accent) ||
+      voices.find(item => item.lang.toLowerCase().startsWith(`${language}-`)) ||
+      voices.find(item => item.lang.toLowerCase().startsWith(language)) ||
+      null;
+  }
+
   function speak(text, rate = profile.rate) {
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      showToast('当前浏览器不支持语音朗读');
+      showToast('当前浏览器不支持语音朗读，请换用 Safari、Chrome 或 Edge');
       return;
     }
-    window.speechSynthesis.cancel();
+    const synthesis = window.speechSynthesis;
+    synthesis.cancel();
+    synthesis.resume();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = profile.accent;
     utterance.rate = rate;
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(item => item.lang.replace('_', '-') === profile.accent) ||
-      voices.find(item => item.lang.toLowerCase().startsWith('en'));
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    const voice = speechVoice();
     if (voice) utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
+    utterance.onerror = event => {
+      if (event.error === 'not-allowed') {
+        showToast('自动朗读被浏览器拦截，请点一次“听发音”启用声音');
+      } else if (event.error !== 'canceled' && event.error !== 'interrupted') {
+        showToast('朗读暂时不可用，请检查系统语音、媒体音量和静音模式');
+      }
+    };
+    synthesis.speak(utterance);
+  }
+
+  function autoSpeakCurrentWord(force = false) {
+    if (!wordSession || !profile.autoSpeak || !currentSessionWord()) return;
+    const word = currentSessionWord();
+    const mode = wordSession.mode;
+    const hidesEnglish = ['recognize', 'spelling', 'english-choice'].includes(mode);
+    if (hidesEnglish && !wordSession.answered) return;
+    const key = `${mode}:${wordSession.index}:${word.id}:${wordSession.answered ? 'answer' : 'prompt'}`;
+    if (!force && key === lastAutoSpeechKey) return;
+    lastAutoSpeechKey = key;
+    speak(word.word);
   }
 
   function showToast(message) {
@@ -830,6 +866,7 @@
   }
 
   function startWordSession(mode) {
+    lastAutoSpeechKey = '';
     wordSession = restoreWordSession();
     if (!wordSession || wordSession.mode !== mode) {
       const queueMode = mode === 'review' || mode === 'focus' ? mode : 'mixed';
@@ -1461,6 +1498,7 @@
         `}
       </section>
     `;
+    autoSpeakCurrentWord();
   }
 
   function renderTypedWordControls() {
@@ -2559,6 +2597,11 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', String(active));
     });
+    document.querySelectorAll('[data-auto-speak]').forEach(button => {
+      const active = (button.dataset.autoSpeak === 'true') === profile.autoSpeak;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
     const level = document.querySelector('#level-setting');
     if (level) level.value = profile.band;
     const goalExplainer = document.querySelector('#goal-explainer');
@@ -2637,6 +2680,15 @@
     profile.rate = value;
     saveProfile();
     updateSettingsControls();
+  }
+
+  function setAutoSpeak(enabled) {
+    profile.autoSpeak = Boolean(enabled);
+    saveProfile();
+    updateSettingsControls();
+    lastAutoSpeechKey = '';
+    if (profile.autoSpeak) autoSpeakCurrentWord(true);
+    showToast(profile.autoSpeak ? '已开启切词自动朗读' : '已关闭切词自动朗读');
   }
 
   function exportLearningData() {
@@ -2762,7 +2814,10 @@
               : profile.accent,
             rate: [0.72, 0.9, 1.08].includes(Number(payload.profile.rate))
               ? Number(payload.profile.rate)
-              : profile.rate
+              : profile.rate,
+            autoSpeak: typeof payload.profile.autoSpeak === 'boolean'
+              ? payload.profile.autoSpeak
+              : profile.autoSpeak
           };
           saveProfile();
         }
@@ -2854,6 +2909,7 @@
     }
     if (event.target.closest('[data-exit-session]')) {
       wordSession = null;
+      lastAutoSpeechKey = '';
       sessionStorage.removeItem(SESSION_KEY);
       renderVocab();
       return;
@@ -3013,6 +3069,11 @@
     const rateButton = event.target.closest('[data-rate]');
     if (rateButton) {
       setRate(rateButton.dataset.rate);
+      return;
+    }
+    const autoSpeakButton = event.target.closest('[data-auto-speak]');
+    if (autoSpeakButton) {
+      setAutoSpeak(autoSpeakButton.dataset.autoSpeak === 'true');
       return;
     }
     const themeButton = event.target.closest('[data-theme-option]');
